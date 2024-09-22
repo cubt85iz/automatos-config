@@ -1,0 +1,8 @@
+---
+- name: Install release for {{ github.name }}
+  ansible.builtin.include_tasks:
+    file: 'install.yml'
+  loop: '{{ config.github | flatten(levels=1) }}'
+  loop_control:
+    loop_var: release
+  when: config.github

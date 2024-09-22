@@ -1,0 +1,35 @@
+---
+- name: Query Github for releases
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/{{ github.project }}/releases/latest
+    method: GET
+    return_content: true
+    status_code: 200
+    body_format: json
+  register: result
+
+- name: Query JSON for download URL
+  ansible.builtin.shell: >
+    set -euo pipefail
+    echo "{{ result.json }}"
+    | jq -r --arg arch_filter "{{ github.arch }}" '.assets | sort_by(.created_at) | reverse | .[] | select(.name | test($arch_filter)) | select(.name|test("rpm$")) | .browser_download_url'
+  when: not appimage.pattern
+  register: download_url
+  changed_when: false
+
+- name: Download AppImage for {{ appimage.name }}
+  ansible.builtin.get_url:
+    url: '{{ download_url }}'
+    dest: /tmp/{{ github.name }}.rpm
+    owner: '{{ config.user.name }}'
+    group: '{{ config.user.name }}'
+    mode: 0644
+
+- name: Install rpm
+  community.general.rpm_ostree_pkg:
+    name: /tmp/{{ github.name }}.rpm
+
+- name: Remove downloaded rpm file
+  ansible.builtin.file:
+    path: /tmp/{{ github.name }}.rpm
+    state: absent

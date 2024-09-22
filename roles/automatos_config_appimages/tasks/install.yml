@@ -1,0 +1,84 @@
+---
+- name: Query Github for releases of {{ appimage.name }}
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/{{ appimage.source }}/releases/latest
+    method: GET
+    return_content: true
+    status_code: 200
+    body_format: json
+  register: result
+
+- name: Query JSON for download URL
+  ansible.builtin.shell: >
+    set -euo pipefail
+    echo "{{ result.json }}"
+    | jq -r '.assets | map(select(.name | contains("AppImage"))) | first | .browser_download_url'
+  when: not appimage.pattern
+  register: download_url
+  changed_when: false
+
+- name: Query JSON for download URL
+  ansible.builtin.shell: >
+    set -euo pipefail
+    echo "{{ result.json }}"
+    | jq --arg PATTERN "{{ appimage.pattern }}" -r 'map(select(.name | test($PATTERN))) | first | .assets | map(select(.name | contains("AppImage"))) | first | .browser_download_url'
+  when: appimage.pattern
+  register: download_url
+  changed_when: false
+
+- name: Download AppImage for {{ appimage.name }}
+  ansible.builtin.get_url:
+    url: '{{ download_url }}'
+    dest:
+    owner: '{{ config.user.name }}'
+    group: '{{ config.user.name }}'
+    mode: 0750
+
+- name: Create folder to temporarily store AppImage files
+  ansible.builtin.file:
+    path: /tmp/{{ appimage.name }}
+    owner: '{{ config.user.name }}'
+    group: '{{ config.user.name }}'
+    mode: 0755
+
+- name: Extract AppImage to temporary directory
+  ansible.builtin.shell: >
+    set -euo pipefail
+    pushd /tmp/{{ appimage.name }} &> /dev/null
+    <path>/{{ appimage.name }}.AppImage --appimage-extract
+    popd &> /dev/null
+  changed_when: false
+
+- name: Install Desktop Entry
+  ansible.builtin.copy:
+    src: /tmp/{{ appimage.name }}/squashfs-root/*.desktop
+    dest: <path for user desktop entry>
+    owner: '{{ config.user.name }}'
+    group: '{{ config.user.name }}'
+    mode: 0640
+
+- name: Update path to AppImage in *.desktop file
+  ansible.builtin.replace:
+    path: <path for user desktop entry>
+    regexp: AppRun --no-sandbox
+    replace: <path to appimage>/{{ appimage.name }}.AppImage
+
+- name: Update exec in *.desktop file
+  ansible.builtin.replace:
+    path: <path for user desktop entry>
+    regexp: Exec=MediaElch
+    replace: <path to appimage>/{{ appimage.name }}.AppImage
+
+- name: Install icon
+  ansible.builtin.copy:
+    src: /tmp/{{ appimage.name }}/squashfs-root/usr/share/icons
+    dest: <path to user icons>
+    owner: '{{ config.user.name }}'
+    group: '{{ config.user.name }}'
+    mode: 0750
+    recursive: true
+
+- name: Remove temporary AppImage files
+  ansible.builtin.file:
+    path: /tmp/{{ appimage.name }}
+    state: absent

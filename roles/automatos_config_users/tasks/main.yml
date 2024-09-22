@@ -1,0 +1,26 @@
+---
+- name: Create user for {{ user.name }}
+  ansible.builtin.user:
+    name: '{{ config.user.name }}'
+    comment: '{{ config.user.gecos }}'
+    password: '{{ config.user.password }}'
+    shell: '{{ config.user.shell }}'
+    uid: '{{ config.user.uid }}'
+    groups: '{{ config.user.groups }}'
+  no_log: true
+  loop: '{{ configs | flatten(levels=1) }}'
+  loop_control:
+    loop_var: 'config'
+
+- name: Configure sudoers file for privileged user(s)
+  ansible.builtin.copy:
+    content: |
+      {{ config.user.name }} ALL=(ALL) ALL
+    dest: '/etc/sudoers.d/{{ config.user.name }}'
+    owner: root
+    group: root
+    mode: '0640'
+  loop: '{{ configs | flatten(levels=1) }}'
+  loop_control:
+    loop_var: 'config'
+  when: config.user.privileged | default(False)

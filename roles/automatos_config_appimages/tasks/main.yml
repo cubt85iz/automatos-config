@@ -1,0 +1,8 @@
+---
+- name: Install AppImages for {{ config.user.name }}
+  ansible.builtin.include_tasks:
+    file: 'process.yml'
+  loop: '{{ configs | flatten(levels=1) }}'
+  loop_control:
+    loop_var: 'config'
+  when: config.appimages
