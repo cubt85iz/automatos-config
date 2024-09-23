@@ -1,0 +1,6 @@
+---
+- name: Deployment for daedalus
+  hosts: localhost
+  become: true
+  roles:
+    - automatos_config_appimages

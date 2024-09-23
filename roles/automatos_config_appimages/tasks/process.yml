@@ -5,10 +5,10 @@
     state: directory
     owner: '{{ config.user.name }}'
     group: '{{ config.user.name }}'
-    mode: 0640
+    mode: '0640'
 
 - name: Install AppImage for {{ appimage.name }}
-  ansibl.builtin.include_tasks:
+  ansible.builtin.include_tasks:
     file: 'install.yml'
   loop: '{{ config.appimages | flatten(levels=1) }}'
   loop_control:

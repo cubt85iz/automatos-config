@@ -26,26 +26,33 @@
   register: download_url
   changed_when: false
 
+- name: Get user home directory
+  ansible.builtin.shell: >
+    set -euo pipefail
+    getent passwd {{ config.user.name }} | awk -F: '{print %6}'
+  changed_when: false
+  register: user_home
+
 - name: Download AppImage for {{ appimage.name }}
   ansible.builtin.get_url:
     url: '{{ download_url }}'
-    dest:
+    dest: '{{ user_home }}/Apps/{{ appimage.name }}.AppImage'
     owner: '{{ config.user.name }}'
     group: '{{ config.user.name }}'
-    mode: 0750
+    mode: '0750'
 
 - name: Create folder to temporarily store AppImage files
   ansible.builtin.file:
     path: /tmp/{{ appimage.name }}
     owner: '{{ config.user.name }}'
     group: '{{ config.user.name }}'
-    mode: 0755
+    mode: '0755'
 
 - name: Extract AppImage to temporary directory
   ansible.builtin.shell: >
     set -euo pipefail
     pushd /tmp/{{ appimage.name }} &> /dev/null
-    <path>/{{ appimage.name }}.AppImage --appimage-extract
+    {{ user_home }}/Apps/{{ appimage.name }}.AppImage --appimage-extract
     popd &> /dev/null
   changed_when: false
 
@@ -55,19 +62,19 @@
     dest: <path for user desktop entry>
     owner: '{{ config.user.name }}'
     group: '{{ config.user.name }}'
-    mode: 0640
+    mode: '0640'
 
 - name: Update path to AppImage in *.desktop file
   ansible.builtin.replace:
     path: <path for user desktop entry>
     regexp: AppRun --no-sandbox
-    replace: <path to appimage>/{{ appimage.name }}.AppImage
+    replace: '{{ user_home }}/Apps/{{ appimage.name }}.AppImage'
 
 - name: Update exec in *.desktop file
   ansible.builtin.replace:
     path: <path for user desktop entry>
     regexp: Exec=MediaElch
-    replace: <path to appimage>/{{ appimage.name }}.AppImage
+    replace: '{{ user_home }}/Apps/{{ appimage.name }}.AppImage'
 
 - name: Install icon
   ansible.builtin.copy:
@@ -75,7 +82,7 @@
     dest: <path to user icons>
     owner: '{{ config.user.name }}'
     group: '{{ config.user.name }}'
-    mode: 0750
+    mode: '0750'
     recursive: true
 
 - name: Remove temporary AppImage files

@@ -1,6 +1,6 @@
 ---
 - name: Install Flatpaks for {{ config.user.name }}
-  ansible.buildint.include_tasks:
+  ansible.builtin.include_tasks:
     file: 'install.yml'
   loop: '{{ configs | flatten(levels=1) }}'
   loop_control:

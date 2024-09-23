@@ -23,7 +23,7 @@
     dest: /tmp/{{ github.name }}.rpm
     owner: '{{ config.user.name }}'
     group: '{{ config.user.name }}'
-    mode: 0644
+    mode: '0644'
 
 - name: Install rpm
   community.general.rpm_ostree_pkg:
